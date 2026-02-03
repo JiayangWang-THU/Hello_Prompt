@@ -4,6 +4,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from agent.agent_config import load_agent_config
+from agent.llm_agent_engine import LLMAssistedAgentEngine
+from hpa.config import TemplatesConfig
+
 from .engine import AgentEngine
 from .llm_client import OpenAICompatibleChatClient
 from .llm_config import LLMConfig, load_llm_config
@@ -35,9 +39,25 @@ def _print_llm_summary(cfg: LLMConfig) -> None:
     )
 
 
+def init_assisted_agent_engine(
+    templates_path: str | Path,
+    agent_config_path: str | Path,
+    llm_config_path: str | Path,
+) -> LLMAssistedAgentEngine:
+    templates_cfg = TemplatesConfig.load(templates_path)
+    assist_cfg = load_agent_config(agent_config_path)
+    llm_cfg = load_llm_config(llm_config_path, {})
+    client = OpenAICompatibleChatClient(llm_cfg)
+    return LLMAssistedAgentEngine(templates_cfg, assist_cfg, client)
+
+
 def run_agent(args: argparse.Namespace) -> None:
-    engine = AgentEngine(cfg_path=Path(args.config))
-    print("Hello Prompt Agent Framework (Manual Template Mode)")
+    if args.assist_llm:
+        engine = init_assisted_agent_engine(args.config, args.agent_config, args.llm_config)
+        print("Hello Prompt Agent Framework (LLM-assisted)")
+    else:
+        engine = AgentEngine(cfg_path=Path(args.config))
+        print("Hello Prompt Agent Framework (Manual Template Mode)")
     print("先输入 /templates 查看模板，或直接 /mode CODE EXTEND")
     print("输入 /help 查看命令说明。")
     print("-" * 72)
@@ -153,6 +173,19 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default="configs/templates.yaml",
         help="path to templates.yaml",
+    )
+    agent_parser.add_argument("--assist-llm", action="store_true", help="enable LLM-assisted workflow")
+    agent_parser.add_argument(
+        "--agent-config",
+        type=str,
+        default="configs/agent.yaml",
+        help="path to agent.yaml",
+    )
+    agent_parser.add_argument(
+        "--llm-config",
+        type=str,
+        default="configs/llm.yaml",
+        help="path to llm.yaml",
     )
     agent_parser.set_defaults(func=run_agent)
 
