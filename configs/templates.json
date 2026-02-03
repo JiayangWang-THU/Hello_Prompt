@@ -1,0 +1,75 @@
+{
+  "modes": [
+    {
+      "category": "CODE",
+      "subtype": "FROM_SCRATCH",
+      "label": "从零构建"
+    },
+    {
+      "category": "CODE",
+      "subtype": "REVIEW",
+      "label": "审阅项目结构"
+    },
+    {
+      "category": "CODE",
+      "subtype": "EXTEND",
+      "label": "二次开发/加功能"
+    }
+  ],
+  "required_slots": {
+    "CODE/FROM_SCRATCH": [
+      "goal",
+      "language",
+      "runtime_env",
+      "scope",
+      "interfaces",
+      "acceptance_tests",
+      "output_format"
+    ],
+    "CODE/REVIEW": [
+      "goal",
+      "repo_context",
+      "review_focus",
+      "deliverable",
+      "output_format"
+    ],
+    "CODE/EXTEND": [
+      "goal",
+      "base_system",
+      "new_features",
+      "compatibility",
+      "runtime_env",
+      "output_format"
+    ]
+  },
+  "slot_priority": [
+    "goal",
+    "base_system",
+    "repo_context",
+    "new_features",
+    "runtime_env",
+    "language",
+    "scope",
+    "interfaces",
+    "compatibility",
+    "review_focus",
+    "deliverable",
+    "acceptance_tests",
+    "output_format"
+  ],
+  "questions": {
+    "goal": "你的最终目标是什么？请用一句可验收的话描述（例：‘生成可直接给Codex用的prompt，输出Markdown，包含验收标准’）。",
+    "language": "目标使用什么语言/技术栈（Python/C++/…）？",
+    "runtime_env": "运行环境是什么（Ubuntu版本、conda、docker、ROS2等）？",
+    "scope": "功能范围包含哪些？请列‘要做’与‘不做’各2-3条。",
+    "interfaces": "对外接口希望是什么（CLI命令/API函数/ROS topic/service）？",
+    "acceptance_tests": "如何验收正确？给2-3个测试用例/验收指标。",
+    "output_format": "最终输出希望是什么格式（Markdown/JSON/代码块/分步骤清单）？",
+    "repo_context": "现有项目是做什么的？核心模块/目录结构怎样？（可贴tree/README摘要）",
+    "review_focus": "审阅重点是什么（架构/可维护性/性能/测试/工程规范）？",
+    "deliverable": "希望输出什么交付物（问题清单/重构方案/目录结构建议/示例代码）？",
+    "base_system": "现有系统关键约束是什么？（模块边界/不能动的接口/依赖）",
+    "new_features": "要新增/修改的功能点有哪些？按优先级列出（P0/P1）。",
+    "compatibility": "是否需要兼容旧接口/旧配置/旧数据？兼容到什么程度？"
+  }
+}
