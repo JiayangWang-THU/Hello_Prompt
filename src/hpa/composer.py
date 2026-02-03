@@ -137,6 +137,6 @@ def compose_prompt(state: AgentState, cfg: TemplatesConfig) -> str:
             _add_section(lines, "Assumptions", assumptions)
 
     if missing_required:
-        _add_section(lines, "Missing Info", [f\"- {_LABELS.get(s, s)}\" for s in missing_required])
+        _add_section(lines, "Missing Info", [f"- {_LABELS.get(s, s)}" for s in missing_required])
 
     return "\n".join(lines).rstrip()
