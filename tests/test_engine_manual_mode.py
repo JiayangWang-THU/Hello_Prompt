@@ -2,7 +2,7 @@ from hpa.engine import AgentEngine
 
 
 def test_manual_mode_flow():
-    eng = AgentEngine(cfg_path="configs/templates.json")
+    eng = AgentEngine(cfg_path="configs/templates.yaml")
 
     # Not selected mode
     r = eng.step("hi")

@@ -13,17 +13,31 @@ pip install -e .
 
 ## 运行
 ```bash
-hpa
+hpa agent
 ```
 
-## 交互命令
+## 交互命令（Agent）
 - `/templates`：列出可用模板
 - `/mode CODE EXTEND`：选择模板（必须先选）
 - `/show`：查看当前 slots
 - `/reset`：重置会话
 - 支持 `key: value` 或 `key=value` 直接填槽位
 
+## Raw Chat（LLM）
+本地 LLM（OpenAI-compatible server）示例：
+```bash
+hpa chat --base-url http://127.0.0.1:8080 --model <local-model>
+```
+
+云端 API（同协议）示例：
+```bash
+export HPA_LLM_API_KEY=...
+hpa chat --base-url https://<provider> --model <model>
+```
+
 ## 配置扩展
-所有模板/必填字段/追问句子都在 `configs/templates.json`：
+所有模板/必填字段/追问句子都在 `configs/templates.yaml`：
 - 增加新模板：在 `modes` 里加一项，并在 `required_slots` 添加对应键
 - 新字段：在 `questions` 里加追问文本
+
+LLM 配置在 `configs/llm.yaml`（默认 `api_key` 为空；不要把 key 写进仓库）。

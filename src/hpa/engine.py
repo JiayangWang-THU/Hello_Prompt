@@ -26,7 +26,7 @@ class AgentEngine:
     - Once filled, it composes a final prompt
     """
 
-    def __init__(self, cfg_path: str | Path = "configs/templates.json"):
+    def __init__(self, cfg_path: str | Path = "configs/templates.yaml"):
         self.cfg = TemplatesConfig.load(cfg_path)
         self.state = AgentState()
 

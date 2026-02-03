@@ -11,7 +11,7 @@ from hpa.state import AgentState
 
 def _cfg() -> TemplatesConfig:
     root = Path(__file__).resolve().parents[1]
-    return TemplatesConfig.load(root / "configs" / "templates.json")
+    return TemplatesConfig.load(root / "configs" / "templates.yaml")
 
 
 @pytest.mark.parametrize(

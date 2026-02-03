@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import yaml
+
 KEY_ALIASES = {
     "env": "runtime_env",
     "os": "runtime_env",
@@ -33,15 +35,22 @@ class TemplatesConfig:
     questions: Dict[str, str]
 
     @staticmethod
-    def load(path: str | Path) -> "TemplatesConfig":
+    def load(path: str | Path = "configs/templates.yaml") -> "TemplatesConfig":
         p = Path(path)
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"无法加载模板配置：{p}") from exc
+        data = None
+        source_path = p
+        if p.exists():
+            data = _load_config_data(p)
+        elif p.suffix.lower() in {".yaml", ".yml"}:
+            fallback = p.with_suffix(".json")
+            if fallback.exists():
+                data = _load_config_data(fallback)
+                source_path = fallback
+        if data is None:
+            raise ValueError(f"无法加载模板配置：{source_path}")
 
         if not isinstance(data, dict):
-            raise ValueError("templates.json 必须是 JSON 对象")
+            raise ValueError("templates 配置必须是对象")
 
         modes = data.get("modes")
         if not isinstance(modes, list) or not modes:
@@ -123,3 +132,15 @@ class TemplatesConfig:
             lines.append(f'{i}) /mode {m["category"]} {m["subtype"]}  （{m.get("label","")}）')
         lines.append("示例：/mode CODE EXTEND")
         return "\n".join(lines)
+
+
+def _load_config_data(path: Path) -> dict:
+    try:
+        text = path.read_text(encoding="utf-8")
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            data = yaml.safe_load(text)
+        else:
+            data = json.loads(text)
+        return data if data is not None else {}
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"无法加载模板配置：{path}") from exc

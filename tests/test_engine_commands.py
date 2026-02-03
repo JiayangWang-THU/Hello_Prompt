@@ -14,7 +14,7 @@ class _FixedDateTime(datetime):
 
 
 def test_clear_slot_command():
-    eng = AgentEngine(cfg_path="configs/templates.json")
+    eng = AgentEngine(cfg_path="configs/templates.yaml")
     eng.step("/mode CODE EXTEND")
     eng.step("runtime_env: ubuntu")
     res = eng.step("/clear env")
@@ -24,7 +24,7 @@ def test_clear_slot_command():
 
 def test_export_creates_file(tmp_path, monkeypatch):
     root = Path(__file__).resolve().parents[1]
-    cfg_path = root / "configs" / "templates.json"
+    cfg_path = root / "configs" / "templates.yaml"
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("hpa.engine.datetime", _FixedDateTime)
 
