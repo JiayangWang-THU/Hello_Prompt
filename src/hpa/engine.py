@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from hpa.interfaces.cli_agent import _dispatch_agent_input, build_clarification_service
+from hpa.interfaces.cli_agent import build_clarification_service, dispatch_agent_input
 
 
 @dataclass
@@ -31,6 +31,6 @@ class AgentEngine:
         return StepResult(text=result.text, done=result.done)
 
     def step(self, user_text: str) -> StepResult:
-        result = _dispatch_agent_input(self.service, user_text)
+        result = dispatch_agent_input(self.service, user_text)
         self.state = self.service.state
         return StepResult(text=result.text, done=result.done)

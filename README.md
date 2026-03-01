@@ -44,6 +44,14 @@ hpa agent
 hpa chat --base-url http://127.0.0.1:8080 --model <model>
 ```
 
+### `hpa web`
+
+启动本地网页交互界面。页面会复用同一套 `ClarificationService`，左侧是对话和选择题，右侧是共享 prompt 文档与 facts 面板。
+
+```bash
+hpa web --host 127.0.0.1 --port 7860
+```
+
 ## 架构
 
 项目采用四层结构：
@@ -55,7 +63,7 @@ hpa chat --base-url http://127.0.0.1:8080 --model <model>
 - `src/hpa/infrastructure`
   - YAML 配置、模板仓库、导出器、LangChain LLM 适配
 - `src/hpa/interfaces`
-  - CLI 入口
+  - CLI 与本地 Web 入口
 
 ## 配置
 

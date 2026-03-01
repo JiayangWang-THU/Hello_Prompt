@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from hpa.domain import ChoicePrompt, ComposerResult, SessionState, TemplateCatalog, TurnRecord
 
@@ -294,3 +295,76 @@ class ClarificationService:
             hint = choice.manual_text_hint or "如果这些选项都不合适，可以直接输入一小段文字。"
             lines.append(f"直接输入文本也可以：{hint}")
         return "\n".join(lines)
+
+    def snapshot(self) -> dict[str, Any]:
+        template = self.mode_service.current_template(self.state)
+        missing_slots = self.question_service.missing_slots(self.state, template) if template else []
+        latest_document = self.state.latest_document
+        pending_choice = self.state.pending_choice
+        latest_result = self.state.latest_result
+        return {
+            "mode_key": self.state.mode_key(),
+            "template_label": template.label if template else None,
+            "confirmed_slots": dict(self.state.confirmed_slots),
+            "missing_slots": missing_slots,
+            "pending_choice": self._serialize_choice_prompt(pending_choice),
+            "document": {
+                "mode_key": latest_document.mode_key,
+                "version": latest_document.version,
+                "sections": [
+                    {
+                        "key": section.key,
+                        "title": section.title,
+                        "content": section.content,
+                    }
+                    for section in latest_document.sections
+                ],
+            }
+            if latest_document
+            else None,
+            "draft_text": self.state.draft_text,
+            "history": [
+                {
+                    "role": turn.role,
+                    "content": turn.content,
+                }
+                for turn in self.state.history
+            ],
+            "suggestions": [
+                {
+                    "kind": suggestion.kind,
+                    "source": suggestion.source,
+                    "message": suggestion.message,
+                    "slot": suggestion.slot,
+                    "proposed_value": suggestion.proposed_value,
+                    "rationale": suggestion.rationale,
+                }
+                for suggestion in self.state.suggestions
+            ],
+            "validation_issues": [
+                issue.model_dump(mode="json") for issue in self.state.latest_validation_issues
+            ],
+            "latest_prompt_spec": latest_result.prompt_spec.model_dump(mode="json") if latest_result else None,
+        }
+
+    def _serialize_choice_prompt(self, choice: ChoicePrompt | None) -> dict[str, Any] | None:
+        if choice is None:
+            return None
+        return {
+            "kind": choice.kind,
+            "title": choice.title,
+            "question": choice.question,
+            "slot": choice.slot,
+            "section_key": choice.section_key,
+            "allow_manual_text": choice.allow_manual_text,
+            "manual_text_hint": choice.manual_text_hint,
+            "options": [
+                {
+                    "key": option.key,
+                    "label": option.label,
+                    "value": option.value,
+                    "rationale": option.rationale,
+                }
+                for option in choice.options
+            ],
+        }

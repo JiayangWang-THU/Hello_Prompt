@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from hpa.interfaces import run_agent, run_chat
+from hpa.interfaces import run_agent, run_chat, run_web
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,6 +26,14 @@ def build_parser() -> argparse.ArgumentParser:
     chat_parser.add_argument("--max-tokens", type=int, default=None)
     chat_parser.add_argument("--system", type=str, default="You are a helpful assistant.")
     chat_parser.set_defaults(func=run_chat)
+
+    web_parser = subparsers.add_parser("web", help="local web UI for the prompt clarification workflow")
+    web_parser.add_argument("--config", type=str, default="configs/templates.yaml", help="path to templates config")
+    web_parser.add_argument("--agent-config", type=str, default="configs/agent.yaml", help="path to agent config")
+    web_parser.add_argument("--llm-config", type=str, default="configs/llm.yaml", help="path to llm config")
+    web_parser.add_argument("--host", type=str, default="127.0.0.1", help="host to bind the local web server")
+    web_parser.add_argument("--port", type=int, default=7860, help="port to bind the local web server")
+    web_parser.set_defaults(func=run_web)
 
     return parser
 

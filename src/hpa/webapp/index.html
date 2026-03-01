@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hello Prompt Agent Web</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="logo-mark">✨</div>
+          <div class="logo-copy">
+            <div class="logo-kicker">HELLO PROMPT</div>
+            <div class="logo-title">Prompt Studio</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="sidebar-item accent" id="reset-button">
+            <span class="sidebar-emoji">🆕</span>
+            <span>新任务</span>
+          </button>
+          <button class="sidebar-item" data-command="/draft">
+            <span class="sidebar-emoji">📄</span>
+            <span>生成草稿</span>
+          </button>
+          <button class="sidebar-item" data-command="/lint">
+            <span class="sidebar-emoji">🧪</span>
+            <span>检查草稿</span>
+          </button>
+          <button class="sidebar-item" data-command="/repair">
+            <span class="sidebar-emoji">🩹</span>
+            <span>修复草稿</span>
+          </button>
+          <button class="sidebar-item" data-command="/show">
+            <span class="sidebar-emoji">🧭</span>
+            <span>查看状态</span>
+          </button>
+          <button class="sidebar-item" data-command="/export">
+            <span class="sidebar-emoji">📤</span>
+            <span>导出会话</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-card" id="status-card">
+          <div class="card-header">
+            <div>
+              <div class="eyebrow">Session</div>
+              <h3>当前状态</h3>
+            </div>
+          </div>
+          <div class="status-row">
+            <span>Mode</span>
+            <strong id="mode-pill">未选择</strong>
+          </div>
+          <div class="status-row">
+            <span>Missing</span>
+            <strong id="missing-pill">0</strong>
+          </div>
+          <div class="status-row">
+            <span>Doc</span>
+            <strong id="doc-pill">v0</strong>
+          </div>
+        </div>
+
+        <div class="sidebar-card facts-card">
+          <div class="card-header">
+            <div>
+              <div class="eyebrow">Facts Layer</div>
+              <h3>🧷 已确认事实</h3>
+            </div>
+          </div>
+          <div class="panel-subtitle">这些内容会被固定下来，不会被 LLM 偷偷改写。</div>
+          <div id="facts-list" class="facts-list"></div>
+        </div>
+
+        <div class="sidebar-user">
+          <div class="user-avatar">🧑</div>
+          <div>
+            <div class="user-name">You</div>
+            <div class="user-meta">Prompt gardener</div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-header">
+          <div class="workspace-title">
+            <span class="workspace-badge">🧠 Hello Prompt Thinking</span>
+            <h1>和 Agent 一起把模糊想法长成一份好 prompt</h1>
+          </div>
+          <div class="workspace-actions">
+            <button id="copy-doc-button" class="ghost-button">📋 Copy Draft</button>
+          </div>
+        </header>
+
+        <div class="workspace-body">
+          <section class="conversation-stage">
+            <div id="hero" class="hero">
+              <div class="hero-mark">🌱</div>
+              <h2>准备好了，随时开始</h2>
+              <p>
+                先直接描述你的目标。我会优先给你选择题，再把结果逐步长成右侧的共享 prompt draft。
+              </p>
+            </div>
+
+            <div id="messages" class="messages"></div>
+
+            <div id="pending-choice" class="pending-choice hidden"></div>
+
+            <div class="composer-shell">
+              <div class="composer-shortcuts">
+                <button class="mini-chip" data-command="/draft">📄 Draft</button>
+                <button class="mini-chip" data-command="/lint">🧪 Lint</button>
+                <button class="mini-chip" data-command="/repair">🩹 Repair</button>
+              </div>
+              <div class="composer">
+                <textarea
+                  id="message-input"
+                  placeholder="例如：我想把一个现有 Python CLI 项目重构成选择题优先的 prompt clarification framework。"
+                  rows="4"
+                ></textarea>
+                <div class="composer-row">
+                  <span id="thinking-indicator" class="thinking hidden">⏳ LLM 正在思考并生成候选项...</span>
+                  <button id="send-button" class="primary-button">↑</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="draft-panel">
+            <div class="draft-panel-header">
+              <div>
+                <div class="eyebrow">Shared Prompt Doc</div>
+                <h2>📝 Live Draft</h2>
+                <div class="panel-subtitle">像文档一样审阅、选中、改写，而不是一大块字符串。</div>
+              </div>
+              <div id="section-badge" class="section-badge">用鼠标选中文档内容</div>
+            </div>
+
+            <div id="document-empty" class="document-empty">
+              共享文档还没有生成。先在左侧发起一次对话，或者点击「📄 生成草稿」。
+            </div>
+
+            <div id="document-sections" class="document-sections"></div>
+
+            <div class="selection-toolbox">
+              <div class="card-header">
+                <div>
+                  <div class="eyebrow">Selection Tools</div>
+                  <h3>✂️ Revise Selection</h3>
+                </div>
+              </div>
+              <div id="selection-summary" class="selection-summary">
+                在右侧文档里用鼠标选中一段文本；如果只想改整个 section，也可以直接点 section 卡片。
+              </div>
+              <div class="toolbox-row">
+                <button id="revise-button" class="secondary-button">✨ Ask LLM For Options</button>
+                <button id="clear-selection-button" class="ghost-button">🧹 Clear Selection</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <template id="message-template">
+      <article class="message">
+        <div class="message-role"></div>
+        <div class="message-body"></div>
+      </article>
+    </template>
+
+    <template id="option-template">
+      <button class="option-card">
+        <span class="option-index"></span>
+        <span class="option-label"></span>
+        <span class="option-rationale"></span>
+      </button>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

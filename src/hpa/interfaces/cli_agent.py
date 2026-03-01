@@ -105,7 +105,7 @@ def run_agent(args: argparse.Namespace) -> None:
                 continue
         if _requires_llm_wait(user):
             print("\nAgent> 正在思考并生成候选项，请稍等...", flush=True)
-        result = _dispatch_agent_input(service, user)
+        result = dispatch_agent_input(service, user)
         print("\nAgent>")
         print(result.text)
         print("-" * 72)
@@ -114,7 +114,7 @@ def run_agent(args: argparse.Namespace) -> None:
             print("-" * 72)
 
 
-def _dispatch_agent_input(service: ClarificationService, user: str):
+def dispatch_agent_input(service: ClarificationService, user: str):
     if user == "/help":
         return service_mode_help()
     if user == "/templates":
