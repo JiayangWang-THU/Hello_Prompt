@@ -1,8 +1,7 @@
-enable_llm_extractor: true
-enable_llm_questioner: true
-enable_llm_refiner: false
-max_questions_per_turn: 1
+enable_mode_router: true
+enable_prompt_refinement: false
+enable_validation_repair: true
 fill_only_empty_slots: true
-question_fallback_to_bank: true
-strict_json_only: true
+strict_json_only: false
+max_questions_per_turn: 1
 debug: false

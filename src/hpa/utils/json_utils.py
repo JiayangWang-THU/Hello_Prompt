@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-from typing import Any
-
 
 def extract_first_json_object(text: str) -> str | None:
     in_string = False
@@ -30,15 +27,5 @@ def extract_first_json_object(text: str) -> str | None:
             if depth > 0:
                 depth -= 1
                 if depth == 0 and start is not None:
-                    return text[start: idx + 1]
+                    return text[start : idx + 1]
     return None
-
-
-def safe_parse_json_object(text: str) -> dict[str, Any] | None:
-    try:
-        data = json.loads(text)
-    except Exception:  # noqa: BLE001
-        return None
-    if not isinstance(data, dict):
-        return None
-    return data

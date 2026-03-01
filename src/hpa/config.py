@@ -1,146 +1,55 @@
 from __future__ import annotations
 
-import json
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
 
-import yaml
-
-KEY_ALIASES = {
-    "env": "runtime_env",
-    "os": "runtime_env",
-    "output": "output_format",
-    "format": "output_format",
-    "tests": "acceptance_tests",
-    "repo": "repo_context",
-    "context": "repo_context",
-    "features": "new_features",
-    "compat": "compatibility",
-    "system": "base_system",
-}
-
-
-def normalize_key_name(key: str) -> str:
-    normalized = key.strip().lower()
-    return KEY_ALIASES.get(normalized, normalized)
+from hpa.domain import TemplateCatalog
+from hpa.infrastructure import TemplateRepository
 
 
 @dataclass(frozen=True)
 class TemplatesConfig:
-    modes: List[Dict[str, str]]
-    required_slots: Dict[str, List[str]]
-    slot_priority: List[str]
-    questions: Dict[str, str]
+    catalog: TemplateCatalog
 
     @staticmethod
     def load(path: str | Path = "configs/templates.yaml") -> "TemplatesConfig":
-        p = Path(path)
-        data = None
-        source_path = p
-        if p.exists():
-            data = _load_config_data(p)
-        elif p.suffix.lower() in {".yaml", ".yml"}:
-            fallback = p.with_suffix(".json")
-            if fallback.exists():
-                data = _load_config_data(fallback)
-                source_path = fallback
-        if data is None:
-            raise ValueError(f"无法加载模板配置：{source_path}")
+        return TemplatesConfig(catalog=TemplateRepository(path).load())
 
-        if not isinstance(data, dict):
-            raise ValueError("templates 配置必须是对象")
+    @property
+    def modes(self):
+        return [
+            {
+                "category": template.category,
+                "subtype": template.subtype,
+                "label": template.label,
+            }
+            for template in self.catalog.templates.values()
+        ]
 
-        modes = data.get("modes")
-        if not isinstance(modes, list) or not modes:
-            raise ValueError("modes 必须是非空列表")
+    @property
+    def required_slots(self):
+        return {
+            template.mode_key: list(template.required_slots)
+            for template in self.catalog.templates.values()
+        }
 
-        required_slots = data.get("required_slots")
-        if not isinstance(required_slots, dict):
-            raise ValueError("required_slots 必须是对象")
+    @property
+    def slot_priority(self):
+        return list(self.catalog.slot_priority)
 
-        slot_priority = data.get("slot_priority")
-        if not isinstance(slot_priority, list):
-            raise ValueError("slot_priority 必须是列表")
-
-        questions = data.get("questions")
-        if questions is None:
-            questions = {}
-        if not isinstance(questions, dict):
-            raise ValueError("questions 必须是对象")
-
-        normalized_modes: list[dict[str, str]] = []
-        mode_keys: list[str] = []
-        for m in modes:
-            if not isinstance(m, dict):
-                raise ValueError("modes 中每个条目必须是对象")
-            cat = str(m.get("category", "")).strip().upper()
-            sub = str(m.get("subtype", "")).strip().upper()
-            if not cat or not sub:
-                raise ValueError("modes 中每个条目必须包含 category 和 subtype")
-            normalized_modes.append({
-                "category": cat,
-                "subtype": sub,
-                "label": str(m.get("label", "")).strip(),
-            })
-            mode_keys.append(f"{cat}/{sub}")
-
-        normalized_required: dict[str, list[str]] = {}
-        for k, v in required_slots.items():
-            if not isinstance(v, list):
-                raise ValueError(f"required_slots[{k}] 必须是列表")
-            key = str(k).strip().upper()
-            normalized_required[key] = [normalize_key_name(str(s)) for s in v]
-
-        missing_modes = [k for k in mode_keys if k not in normalized_required]
-        if missing_modes:
-            raise ValueError(f"required_slots 缺少模式：{', '.join(missing_modes)}")
-
-        normalized_priority = [normalize_key_name(str(s)) for s in slot_priority]
-
-        required_all = {s for req in normalized_required.values() for s in req}
-        missing_in_priority = sorted(required_all - set(normalized_priority))
-        if missing_in_priority:
-            warnings.warn(
-                "slot_priority 未包含以下必填槽位，将按末尾顺序处理："
-                + ", ".join(missing_in_priority),
-                stacklevel=2,
-            )
-
-        normalized_questions = {normalize_key_name(str(k)): str(v) for k, v in questions.items()}
-        for slot in required_all:
-            if slot not in normalized_questions:
-                normalized_questions[slot] = f"请补充：{slot}"
-
-        return TemplatesConfig(
-            modes=normalized_modes,
-            required_slots=normalized_required,
-            slot_priority=normalized_priority,
-            questions=normalized_questions,
-        )
+    @property
+    def questions(self):
+        return {key: slot.question for key, slot in self.catalog.slots.items()}
 
     def normalize_key(self, key: str) -> str:
-        return normalize_key_name(key)
+        return self.catalog.normalize_key(key)
 
-    def allowed_modes(self) -> set[Tuple[str, str]]:
-        return {(m["category"].upper(), m["subtype"].upper()) for m in self.modes}
+    def allowed_modes(self) -> set[tuple[str, str]]:
+        return self.catalog.allowed_modes()
 
     def mode_menu_text(self) -> str:
-        lines = ["请选择模式（纯手动模板）："]
-        for i, m in enumerate(self.modes, 1):
-            lines.append(f'{i}) /mode {m["category"]} {m["subtype"]}  （{m.get("label","")}）')
-        lines.append("示例：/mode CODE EXTEND")
-        return "\n".join(lines)
+        return self.catalog.mode_menu_text()
 
 
-def _load_config_data(path: Path) -> dict:
-    try:
-        text = path.read_text(encoding="utf-8")
-        if path.suffix.lower() in {".yaml", ".yml"}:
-            data = yaml.safe_load(text)
-        else:
-            data = json.loads(text)
-        return data if data is not None else {}
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"无法加载模板配置：{path}") from exc
+def normalize_key_name(key: str) -> str:
+    return TemplateRepository("configs/templates.yaml").load().normalize_key(key)

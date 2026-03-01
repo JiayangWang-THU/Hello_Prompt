@@ -1,36 +1,63 @@
-modes:
-  - category: CODE
-    subtype: FROM_SCRATCH
-    label: 从零构建
-  - category: CODE
-    subtype: REVIEW
-    label: 审阅项目结构
-  - category: CODE
-    subtype: EXTEND
-    label: 二次开发/加功能
-
-required_slots:
-  CODE/FROM_SCRATCH:
-    - goal
-    - language
-    - runtime_env
-    - scope
-    - interfaces
-    - acceptance_tests
-    - output_format
-  CODE/REVIEW:
-    - goal
-    - repo_context
-    - review_focus
-    - deliverable
-    - output_format
-  CODE/EXTEND:
-    - goal
-    - base_system
-    - new_features
-    - compatibility
-    - runtime_env
-    - output_format
+slots:
+  goal:
+    label: Goal
+    question: "你的最终目标是什么？请用一句可验收的话描述。"
+    section: goal
+  base_system:
+    label: Base system constraints
+    question: "现有系统关键约束是什么？例如模块边界、不能动的接口、依赖。"
+    section: context
+    aliases: ["system"]
+  repo_context:
+    label: Repository context
+    question: "现有项目是做什么的？核心模块和目录结构怎样？"
+    section: context
+    aliases: ["repo", "context"]
+  new_features:
+    label: Requested changes
+    question: "要新增或修改哪些功能点？按优先级列出。"
+    section: inputs
+    aliases: ["features"]
+  language:
+    label: Language / stack
+    question: "目标使用什么语言或技术栈？"
+    section: constraints
+  runtime_env:
+    label: Runtime environment
+    question: "运行环境是什么？例如 Ubuntu 版本、conda、docker、ROS2。"
+    section: constraints
+    aliases: ["env", "os"]
+  scope:
+    label: Scope
+    question: "功能范围包含哪些？请列出要做与不做。"
+    section: constraints
+  interfaces:
+    label: Interfaces
+    question: "对外接口希望是什么？例如 CLI、API、函数或 topic/service。"
+    section: constraints
+  compatibility:
+    label: Compatibility
+    question: "是否需要兼容旧接口、旧配置或旧数据？"
+    section: constraints
+    aliases: ["compat"]
+  deliverable:
+    label: Requested deliverables
+    question: "希望输出什么交付物？例如问题清单、重构方案、示例代码。"
+    section: deliverables
+  review_focus:
+    label: Review focus
+    question: "审阅重点是什么？例如架构、可维护性、性能、测试。"
+    section: acceptance
+  acceptance_tests:
+    label: Acceptance tests
+    question: "如何验收正确？请给出 2-3 个测试用例或验收指标。"
+    section: acceptance
+    aliases: ["tests"]
+  output_format:
+    label: Output format
+    question: "最终输出希望是什么格式？例如 Markdown、JSON、代码块、步骤清单。"
+    section: output
+    aliases: ["output", "format"]
 
 slot_priority:
   - goal
@@ -47,17 +74,78 @@ slot_priority:
   - acceptance_tests
   - output_format
 
-questions:
-  goal: "你的最终目标是什么？请用一句可验收的话描述（例：‘生成可直接给Codex用的prompt，输出Markdown，包含验收标准’）。"
-  language: "目标使用什么语言/技术栈（Python/C++/…）？"
-  runtime_env: "运行环境是什么（Ubuntu版本、conda、docker、ROS2等）？"
-  scope: "功能范围包含哪些？请列‘要做’与‘不做’各2-3条。"
-  interfaces: "对外接口希望是什么（CLI命令/API函数/ROS topic/service）？"
-  acceptance_tests: "如何验收正确？给2-3个测试用例/验收指标。"
-  output_format: "最终输出希望是什么格式（Markdown/JSON/代码块/分步骤清单）？"
-  repo_context: "现有项目是做什么的？核心模块/目录结构怎样？（可贴tree/README摘要）"
-  review_focus: "审阅重点是什么（架构/可维护性/性能/测试/工程规范）？"
-  deliverable: "希望输出什么交付物（问题清单/重构方案/目录结构建议/示例代码）？"
-  base_system: "现有系统关键约束是什么？（模块边界/不能动的接口/依赖）"
-  new_features: "要新增/修改的功能点有哪些？按优先级列出（P0/P1）。"
-  compatibility: "是否需要兼容旧接口/旧配置/旧数据？兼容到什么程度？"
+modes:
+  - category: CODE
+    subtype: FROM_SCRATCH
+    label: 从零构建
+    description: 从种子需求长成完整实现 prompt
+    required_slots:
+      - goal
+      - language
+      - runtime_env
+      - scope
+      - interfaces
+      - acceptance_tests
+      - output_format
+    slot_order:
+      - goal
+      - language
+      - runtime_env
+      - scope
+      - interfaces
+      - acceptance_tests
+      - output_format
+    deliverable_defaults:
+      - Architecture / implementation plan
+      - Key code snippets and file layout
+      - Test plan aligned to acceptance criteria
+    acceptance_defaults:
+      - Include a concrete test checklist for the proposed implementation
+    output_format_default: Markdown with clear headings and lists
+  - category: CODE
+    subtype: REVIEW
+    label: 审阅项目结构
+    description: 以事实层为基础产出 review prompt
+    required_slots:
+      - goal
+      - repo_context
+      - review_focus
+      - deliverable
+      - output_format
+    slot_order:
+      - goal
+      - repo_context
+      - review_focus
+      - deliverable
+      - output_format
+    deliverable_defaults:
+      - Prioritized findings with severity and evidence
+      - Actionable recommendations or refactor plan
+    acceptance_defaults:
+      - Review checklist must be explicit and aligned to the goal
+    output_format_default: Markdown with clear headings and lists
+  - category: CODE
+    subtype: EXTEND
+    label: 二次开发 / 加功能
+    description: 在既有系统上澄清改动并生长出高质量 prompt
+    required_slots:
+      - goal
+      - base_system
+      - new_features
+      - compatibility
+      - runtime_env
+      - output_format
+    slot_order:
+      - goal
+      - base_system
+      - new_features
+      - compatibility
+      - runtime_env
+      - output_format
+    deliverable_defaults:
+      - Change plan and integration notes
+      - Key code snippets or patch guidance
+      - Test updates for new behavior
+    acceptance_defaults:
+      - Include a concrete test checklist for the implemented changes
+    output_format_default: Markdown with clear headings and lists

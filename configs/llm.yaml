@@ -1,6 +1,6 @@
 base_url: "http://127.0.0.1:8080"
 api_key: ""
-model: "local-model"
+model: "Qwen3-4B-Q4_K_M.gguf"
 timeout_sec: 60
 temperature: 0.2
 max_tokens: 800
