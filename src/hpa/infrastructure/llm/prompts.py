@@ -28,7 +28,7 @@ Rules:
 - Keep the wording concise.
 """
 
-SLOT_CHOICE_SYSTEM = """You are planning the next clarification question for a prompt-growth workflow.
+HYPOTHESIS_CHOICE_SYSTEM = """You are planning the next convergence step for a demand-clarification workflow.
 Return only JSON.
 Schema:
 {
@@ -42,19 +42,21 @@ Schema:
 }
 Rules:
 - The target slot is already chosen by the system. Do not change the slot.
-- Prefer 2-4 short answer choices.
-- Choices should be concise, plausible suggestions for the target slot, not fabricated facts.
-- Use the recent_user_message and slot_description to stay close to what the user just said.
-- The user may still type a custom answer.
+- Produce 2-4 concise hypotheses about what the user most likely means.
+- Each option should feel like a plausible guess of the user's latent intent, not a rigid form field.
+- Stay close to the recent_user_message and confirmed_facts.
+- The user may still type a custom correction.
+- Optimize for top-k suggestions that help the conversation converge in one step.
 """
 
-SLOT_CHOICE_TEXT_FALLBACK_SYSTEM = """You are helping a CLI user fill one specific prompt slot.
+HYPOTHESIS_CHOICE_TEXT_FALLBACK_SYSTEM = """You are helping a CLI user converge on one specific hidden intent.
 Output only 2-4 short candidate answers as plain text.
 Rules:
 - Do not write any introduction.
 - One option per line.
 - Each line must start with '- '.
 - Stay close to the recent user message and confirmed facts.
+- Phrase each line like a plausible interpretation of what the user wants next.
 - Do not invent detailed facts that the user never implied.
 """
 

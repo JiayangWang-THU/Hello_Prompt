@@ -1,21 +1,41 @@
 # Hello Prompt Agent
 
-Hello Prompt Agent 是一个 **CLI-first 的 Prompt Clarification Framework**。  
-它不是通用 autonomous agent，也不默认替用户自主规划一切。它的核心目标是把模糊需求逐步澄清成结构化、高质量 prompt，供 Codex 或其他代码 LLM 使用。
+Hello Prompt Agent 是一个面向网页端大模型的需求收敛系统。  
+它通过持续对话，把用户最初模糊、不完整、甚至自我矛盾的想法，逐轮收敛成更具体、更可执行的 prompt。
 
-## 当前定位
+## 项目定位
 
-- 本地 Python 包 + CLI
-- 模板 / slots 驱动的需求澄清器
-- 以“事实层 + 建议层”分离为核心
-- LLM 驱动交互，尽量通过选择题推进
-- 支持最小可用的 validation + repair 闭环
+- Python 包，主入口是 CLI
+- 面向代码大模型的多轮需求收敛
+- 系统主动生成若干高概率猜测，而不是等用户先把需求说清楚
+- 每轮只推进当前最值得确认的一步
+- 明确区分事实层和建议层
+- LLM 可以猜测、建议、改写，但不能静默篡改已确认事实
+- 支持收敛、compose、lint、repair、document revise 的完整闭环
 
-## 主要命令
+## 核心方法
+
+这个项目不想做成 prompt 填表器。
+
+它的工作方式是：
+
+- 用户先给出一个模糊任务
+- 系统根据当前上下文猜测用户更可能真正想要的几个方向
+- 系统给出 top-k 建议，帮助用户快速选择、修正或补充
+- 每一轮只推进一步，反复小规划，而不是一次性全局规划
+- 当信息足够稳定时，再把收敛结果整理成共享 prompt 文档
+
+可以把它理解成：
+
+- 多次规划，单步执行
+- 猜测优先，修正友好
+- 用户共创，而不是表单填写
+
+## 当前入口
 
 ### `hpa agent`
 
-进入 LLM 驱动、选择题优先的 prompt clarification 工作流。
+主工作流。用户输入任务种子后，系统会先判断 mode，并持续给出 top-k 收敛建议，帮助用户把真实意图说清楚。
 
 ```bash
 hpa agent
@@ -23,6 +43,7 @@ hpa agent
 
 支持命令：
 
+- `/help`
 - `/templates`
 - `/mode <CATEGORY> <SUBTYPE>`
 - `/show`
@@ -38,7 +59,7 @@ hpa agent
 
 ### `hpa chat`
 
-作为一个 OpenAI-compatible 的原始聊天 CLI：
+原始 OpenAI-compatible chat CLI，不走需求收敛工作流。
 
 ```bash
 hpa chat --base-url http://127.0.0.1:8080 --model <model>
@@ -46,30 +67,34 @@ hpa chat --base-url http://127.0.0.1:8080 --model <model>
 
 ### `hpa web`
 
-启动本地网页交互界面。页面会复用同一套 `ClarificationService`，左侧是对话和选择题，右侧是共享 prompt 文档与 facts 面板。
+本地 Web 界面，复用同一套 `ClarificationService`。当前实现适合本机单用户调试，可作为网页端大模型交互的本地入口，不是面向多用户部署的 Web 服务。
 
 ```bash
 hpa web --host 127.0.0.1 --port 7860
 ```
 
-## 架构
-
-项目采用四层结构：
+## 项目结构
 
 - `src/hpa/domain`
-  - 核心领域对象，如 `TemplateSpec`、`PromptSpec`、`SessionState`
+  - 领域模型，定义模板、会话状态、候选建议、共享文档、校验问题等
 - `src/hpa/application`
-  - 业务编排，如 mode 解析、slot 补全、追问、compose、validate、repair
+  - 工作流编排，处理 mode、意图猜测、收敛推进、compose、validate、repair
 - `src/hpa/infrastructure`
-  - YAML 配置、模板仓库、导出器、LangChain LLM 适配
+  - 配置加载、模板仓库、导出器、LLM 适配、可选能力提供者
 - `src/hpa/interfaces`
-  - CLI 与本地 Web 入口
+  - CLI 和本地 Web 入口
+- `src/hpa/webapp`
+  - Web UI 静态资源
+- `configs`
+  - 模板、agent 行为和 LLM 配置
+- `tests`
+  - 基于 fake LLM 的单元测试
 
 ## 配置
 
-- 模板配置：`configs/templates.yaml`
-- agent 配置：`configs/agent.yaml`
-- LLM 配置：`configs/llm.yaml`
+- 模板：`configs/templates.yaml`
+- agent：`configs/agent.yaml`
+- LLM：`configs/llm.yaml`
 
 LLM 配置优先级：
 
@@ -78,7 +103,7 @@ LLM 配置优先级：
 3. YAML 配置
 4. 默认值
 
-环境变量：
+支持的环境变量：
 
 - `HPA_LLM_BASE_URL`
 - `HPA_LLM_API_KEY`
@@ -96,10 +121,13 @@ pip install -U pip
 pip install -e .
 ```
 
+如果要运行测试，还需要额外安装 `pytest`。
+
 ## 设计边界
 
 - 不做重型 autonomous coding agent
-- 不让 tool calling 成为默认中心
-- LLM 可以建议，但不能偷偷改写已确认事实
-- skills / capabilities 目前只保留插件接口，默认关闭
-- 交互上优先走“选择题”，只有必要时才让用户补自由文本
+- 不默认围绕 tool calling 展开
+- 不提供数据库、长期记忆或多用户服务端能力
+- 不把用户交互设计成“逐字段填表”
+- 已确认事实不能被 LLM 静默覆盖
+- capability / skill 接口默认关闭，仅保留扩展点

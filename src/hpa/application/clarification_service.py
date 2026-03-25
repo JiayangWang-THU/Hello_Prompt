@@ -7,7 +7,7 @@ from hpa.domain import ChoicePrompt, ComposerResult, SessionState, TemplateCatal
 
 from .composition_service import PromptCompositionService
 from .mode_service import ModeResolverService
-from .question_service import QuestionPlanningService
+from .question_service import ConvergencePlanningService
 from .repair_service import RepairService
 from .session_service import SessionService
 from .slot_service import SlotFillingService
@@ -22,14 +22,14 @@ class InteractionResult:
 
 
 class ClarificationService:
-    """LLM-driven clarification workflow with choice-first CLI interaction."""
+    """LLM-driven demand convergence workflow with iterative planning."""
 
     def __init__(
         self,
         catalog: TemplateCatalog,
         mode_service: ModeResolverService,
         slot_service: SlotFillingService,
-        question_service: QuestionPlanningService,
+        question_service: ConvergencePlanningService,
         composition_service: PromptCompositionService,
         validation_service: ValidationService,
         repair_service: RepairService,
@@ -51,7 +51,7 @@ class ClarificationService:
         self.state = self.session_service.reset()
         intro = (
             "已重置。\n"
-            "直接描述你的任务即可，我会先给你一组 mode 选择题，然后尽量用简短选项推进。"
+            "直接描述你的任务即可。我会先猜测你更接近的任务方向，再通过 top-k 建议逐轮收敛你的真实需求。"
         )
         return InteractionResult(text=intro, done=False)
 
@@ -149,7 +149,7 @@ class ClarificationService:
             instruction or "improve clarity while preserving facts",
         )
         if prompt is None:
-            return InteractionResult(text="当前没能生成 section 改写建议。请换个 section 或补充更多事实。", done=False)
+            return InteractionResult(text="当前没能生成 section 改写建议。请换个 section，或先补充更多真实意图。", done=False)
         self.state.pending_choice = prompt
         return InteractionResult(text=self._render_choice_prompt(prompt), done=False)
 
@@ -195,7 +195,11 @@ class ClarificationService:
             self.state.pending_choice = choice
             return InteractionResult(text=self._render_choice_prompt(choice), done=False)
 
-        focus_slot = self.state.pending_choice.slot if self.state.pending_choice and self.state.pending_choice.kind == "slot_select" else None
+        focus_slot = (
+            self.state.pending_choice.slot
+            if self.state.pending_choice and self.state.pending_choice.kind == "hypothesis_select"
+            else None
+        )
         self.slot_service.apply_free_text(self.state, template, user_text, focus_slot=focus_slot)
         self.state.pending_choice = None
         response = self._advance_after_update()
@@ -224,7 +228,7 @@ class ClarificationService:
         self.state.latest_validation_issues = issues
 
         text_prefix = f"{prefix}\n" if prefix else ""
-        response_text = text_prefix + "信息已足够，下面是共享 prompt 文档的当前版本：\n\n" + composed.prompt_text
+        response_text = text_prefix + "当前信息已经足够稳定，下面是收敛后的共享 prompt 文档：\n\n" + composed.prompt_text
         if issues:
             response_text += "\n\nLint 提示：\n" + "\n".join(
                 f"- [{issue.severity}] {issue.code}: {issue.message}" for issue in issues
@@ -250,13 +254,13 @@ class ClarificationService:
             category, subtype = mode_key.split("/", maxsplit=1)
             return self.set_mode(category, subtype)
 
-        if pending.kind == "slot_select":
+        if pending.kind == "hypothesis_select":
             if option.value == "__manual__":
                 self.state.pending_choice = pending
                 hint = pending.manual_text_hint or "请直接输入一小段文字。"
-                return InteractionResult(text=f"请直接输入补充内容。\n{hint}", done=False)
+                return InteractionResult(text=f"请直接修正系统的猜测。\n{hint}", done=False)
             self.slot_service.apply_choice_selection(self.state, pending.slot or "", option.value)
-            return self._advance_after_update(prefix=f"已采用建议：{option.label}")
+            return self._advance_after_update(prefix=f"已采用这条收敛建议：{option.label}")
 
         if pending.kind == "doc_revision":
             if self.state.latest_document is None:
@@ -286,6 +290,8 @@ class ClarificationService:
 
     def _render_choice_prompt(self, choice: ChoicePrompt) -> str:
         lines = [choice.title, choice.question]
+        if choice.planning_note:
+            lines.append(f"推进策略：{choice.planning_note}")
         for idx, option in enumerate(choice.options, 1):
             line = f"{idx}. {option.label}"
             if option.rationale:
@@ -306,6 +312,7 @@ class ClarificationService:
             "mode_key": self.state.mode_key(),
             "template_label": template.label if template else None,
             "confirmed_slots": dict(self.state.confirmed_slots),
+            "current_focus": self.state.current_focus,
             "missing_slots": missing_slots,
             "pending_choice": self._serialize_choice_prompt(pending_choice),
             "document": {
@@ -356,6 +363,8 @@ class ClarificationService:
             "question": choice.question,
             "slot": choice.slot,
             "section_key": choice.section_key,
+            "focus_label": choice.focus_label,
+            "planning_note": choice.planning_note,
             "allow_manual_text": choice.allow_manual_text,
             "manual_text_hint": choice.manual_text_hint,
             "options": [

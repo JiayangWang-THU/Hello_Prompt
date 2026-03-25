@@ -46,6 +46,7 @@ def test_revise_section_uses_choice_prompt():
             ChoiceOption(key="2", label="更简洁的 Goal", value="- 更简洁的 goal", rationale="更短"),
         ],
         section_key="goal",
+        planning_note="先只改这一段，保持其他事实不动。",
         allow_manual_text=True,
         manual_text_hint="也可以自己写。",
     )

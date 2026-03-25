@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from hpa.application import (
     ClarificationService,
+    ConvergencePlanningService,
     ModeResolverService,
     PromptCompositionService,
-    QuestionPlanningService,
     RepairService,
     SessionService,
     SlotFillingService,
@@ -45,7 +45,7 @@ class FakeLLMEnhancer:
     ) -> dict[str, str]:
         return dict(self.slot_updates)
 
-    def propose_slot_choice(
+    def propose_hypothesis_choice(
         self,
         catalog: TemplateCatalog,
         template: TemplateSpec,
@@ -97,7 +97,7 @@ def build_service(
             catalog,
             llm=llm,
         ),
-        question_service=QuestionPlanningService(
+        question_service=ConvergencePlanningService(
             catalog,
             llm=llm,
         ),
@@ -137,14 +137,16 @@ def make_mode_choice(recommended: str = "CODE/EXTEND") -> ChoicePrompt:
 
 def make_slot_choice(slot: str, *values: str) -> ChoicePrompt:
     return ChoicePrompt(
-        kind="slot_select",
-        title=f"请补全 {slot}",
-        question=f"为 {slot} 选择一个更接近的候选答案。",
+        kind="hypothesis_select",
+        title=f"我猜你在 {slot} 上更接近下面这些想法之一",
+        question=f"为 {slot} 选择一个更接近你真实意图的候选方向。",
         options=[
             ChoiceOption(key=str(idx), label=value, value=value, rationale="LLM suggestion")
             for idx, value in enumerate(values, 1)
         ],
         slot=slot,
+        focus_label=slot,
+        planning_note="多次规划，单步执行。",
         allow_manual_text=True,
-        manual_text_hint="如果这些都不合适，可以直接输入你的表述。",
+        manual_text_hint="如果这些都不合适，可以直接输入你的真实想法。",
     )

@@ -5,9 +5,9 @@ from pathlib import Path
 
 from hpa.application import (
     ClarificationService,
+    ConvergencePlanningService,
     ModeResolverService,
     PromptCompositionService,
-    QuestionPlanningService,
     RepairService,
     SessionService,
     SlotFillingService,
@@ -44,7 +44,7 @@ def build_clarification_service(
         llm=llm,
         fill_only_empty_slots=agent_cfg.fill_only_empty_slots,
     )
-    question_service = QuestionPlanningService(
+    question_service = ConvergencePlanningService(
         catalog,
         llm=llm,
         max_questions_per_turn=agent_cfg.max_questions_per_turn,
@@ -85,8 +85,8 @@ def run_agent(args: argparse.Namespace) -> None:
         print(f"Agent 启动失败：{exc}")
         print("请先确认 langchain-openai 已安装，且 llm.yaml / 环境变量中的本地模型配置正确。")
         return
-    print("Hello Prompt Agent Framework (LLM choice-first)")
-    print("直接描述你的任务，我会尽量把后续交互收敛成选择题。")
+    print("Hello Prompt Agent")
+    print("直接描述你的任务，我会通过多轮猜测和收敛，把模糊需求变成更具体的 prompt。")
     print("输入 /help 查看命令说明。")
     print("-" * 72)
 
@@ -104,7 +104,7 @@ def run_agent(args: argparse.Namespace) -> None:
                 print("（空输入，已取消）")
                 continue
         if _requires_llm_wait(user):
-            print("\nAgent> 正在思考并生成候选项，请稍等...", flush=True)
+            print("\nAgent> 正在推测你更接近的真实意图，并生成 top-k 建议，请稍等...", flush=True)
         result = dispatch_agent_input(service, user)
         print("\nAgent>")
         print(result.text)
@@ -175,7 +175,7 @@ def service_mode_help():
             "命令：\n"
             "- /templates 显示模板\n"
             "- /mode <CATEGORY> <SUBTYPE> 手动指定 mode\n"
-            "- /show 查看当前 facts / 缺失项 / 等待中的选择题\n"
+            "- /show 查看当前已确认事实 / 收敛焦点 / 等待中的建议\n"
             "- /doc 查看共享 prompt 文档\n"
             "- /revise <section> [instruction] 对某个 section 生成改写选项\n"
             "- /clear <slot> 清空单个槽位\n"
@@ -186,7 +186,8 @@ def service_mode_help():
             "- /reset 重置\n"
             "- /paste 进入多行粘贴模式（CLI）\n"
             "\n"
-            "交互方式：优先直接输入一个任务描述；当我给出选择题时，输入数字即可。"
+            "交互方式：先直接说你的需求；系统会主动猜测你可能真正想要的方向，"
+            "你可以输入数字直接选，也可以自己修正。"
         ),
         done=False,
     )

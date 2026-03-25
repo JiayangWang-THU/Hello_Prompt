@@ -33,7 +33,7 @@ def test_show_clear_export_and_doc(tmp_path, monkeypatch):
 
     show = service.show_state()
     assert "当前 mode: CODE/EXTEND" in show.text
-    assert "当前等待中的选择题" not in show.text
+    assert "当前等待中的收敛建议" not in show.text
 
     doc = service.show_document()
     assert "共享 prompt 文档" in doc.text

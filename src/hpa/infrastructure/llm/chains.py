@@ -26,11 +26,11 @@ from hpa.infrastructure.llm.parsers import (
 
 from .prompts import (
     DOC_REVISION_SYSTEM,
+    HYPOTHESIS_CHOICE_SYSTEM,
+    HYPOTHESIS_CHOICE_TEXT_FALLBACK_SYSTEM,
     MODE_ROUTING_SYSTEM,
     REFINE_SYSTEM,
     REPAIR_SYSTEM,
-    SLOT_CHOICE_SYSTEM,
-    SLOT_CHOICE_TEXT_FALLBACK_SYSTEM,
     SLOT_EXTRACTION_SYSTEM,
 )
 
@@ -57,8 +57,8 @@ class LangChainLLMEnhancer:
         (
             self._slot_chain,
             self._mode_chain,
-            self._slot_choice_chain,
-            self._slot_choice_text_chain,
+            self._hypothesis_choice_chain,
+            self._hypothesis_choice_text_chain,
             self._refine_chain,
             self._repair_chain,
             self._doc_revision_chain,
@@ -82,18 +82,18 @@ class LangChainLLMEnhancer:
                 ("user", "available_modes: {available_modes}\nuser_message: {user_message}"),
             ]
         )
-        slot_choice_prompt = ChatPromptTemplate.from_messages(
+        hypothesis_choice_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", SLOT_CHOICE_SYSTEM),
+                ("system", HYPOTHESIS_CHOICE_SYSTEM),
                 (
                     "user",
                     "mode_key: {mode_key}\nslot_key: {slot_key}\nslot_label: {slot_label}\nslot_question: {slot_question}\nslot_description: {slot_description}\nrecent_user_message: {recent_user_message}\nconfirmed_facts: {confirmed_facts}",
                 ),
             ]
         )
-        slot_choice_text_prompt = ChatPromptTemplate.from_messages(
+        hypothesis_choice_text_prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", SLOT_CHOICE_TEXT_FALLBACK_SYSTEM),
+                ("system", HYPOTHESIS_CHOICE_TEXT_FALLBACK_SYSTEM),
                 (
                     "user",
                     "mode_key: {mode_key}\nslot_key: {slot_key}\nslot_label: {slot_label}\nslot_question: {slot_question}\nslot_description: {slot_description}\nrecent_user_message: {recent_user_message}\nconfirmed_facts: {confirmed_facts}",
@@ -134,8 +134,8 @@ class LangChainLLMEnhancer:
         mode_chain = mode_prompt | self.model | StrOutputParser() | RunnableLambda(
             lambda text: parse_pydantic_json(ModeRoutingPayload, text, self.strict_json_only)
         )
-        slot_choice_chain = slot_choice_prompt | self.model | StrOutputParser()
-        slot_choice_text_chain = slot_choice_text_prompt | self.model | StrOutputParser()
+        hypothesis_choice_chain = hypothesis_choice_prompt | self.model | StrOutputParser()
+        hypothesis_choice_text_chain = hypothesis_choice_text_prompt | self.model | StrOutputParser()
         refine_chain = refine_prompt | self.model | StrOutputParser() | RunnableLambda(
             lambda text: parse_pydantic_json(PromptTextPayload, text, self.strict_json_only)
         )
@@ -148,8 +148,8 @@ class LangChainLLMEnhancer:
         return (
             slot_chain,
             mode_chain,
-            slot_choice_chain,
-            slot_choice_text_chain,
+            hypothesis_choice_chain,
+            hypothesis_choice_text_chain,
             refine_chain,
             repair_chain,
             doc_revision_chain,
@@ -221,7 +221,7 @@ class LangChainLLMEnhancer:
                 results[key] = value
         return results
 
-    def propose_slot_choice(
+    def propose_hypothesis_choice(
         self,
         catalog: TemplateCatalog,
         template: TemplateSpec,
@@ -235,7 +235,7 @@ class LangChainLLMEnhancer:
         payload: SlotChoicePayload | None = None
 
         try:
-            structured_raw = self._slot_choice_chain.invoke(
+            structured_raw = self._hypothesis_choice_chain.invoke(
                 {
                     "mode_key": template.mode_key,
                     "slot_key": slot_key,
@@ -248,12 +248,12 @@ class LangChainLLMEnhancer:
             )
             payload = parse_slot_choice_payload(structured_raw, self.strict_json_only, default_slot=slot_key)
         except Exception:  # noqa: BLE001
-            self._debug("slot-choice structured generation failed", exc_info=True)
+            self._debug("hypothesis-choice structured generation failed", exc_info=True)
 
         if payload is None:
             if structured_raw:
-                self._debug(f"slot-choice structured raw response rejected: {structured_raw}")
-            payload = self._fallback_slot_choice_payload(
+                self._debug(f"hypothesis-choice structured raw response rejected: {structured_raw}")
+            payload = self._fallback_hypothesis_choice_payload(
                 template=template,
                 state=state,
                 slot_key=slot_key,
@@ -267,9 +267,10 @@ class LangChainLLMEnhancer:
             return None
 
         return ChoicePrompt(
-            kind="slot_select",
-            title=payload.title or f"请补全 {slot_def.label if slot_def else slot_key}",
-            question=payload.question or (slot_def.question if slot_def else f"请补充：{slot_key}"),
+            kind="hypothesis_select",
+            title=payload.title or f"我猜你更接近下面这些方向之一：{slot_def.label if slot_def else slot_key}",
+            question=payload.question
+            or f"为了继续收敛需求，我先猜测你在“{slot_def.label if slot_def else slot_key}”上更接近哪种真实意图。",
             options=[
                 ChoiceOption(
                     key=str(idx),
@@ -280,8 +281,10 @@ class LangChainLLMEnhancer:
                 for idx, option in enumerate(payload.options, 1)
             ],
             slot=slot_key,
+            focus_label=slot_def.label if slot_def else slot_key,
+            planning_note="多次规划，单步执行。当前只确认最值得推进的一步。",
             allow_manual_text=payload.allow_manual_text,
-            manual_text_hint=payload.manual_text_hint or "如果这些建议都不合适，可以直接输入你自己的表述。",
+            manual_text_hint=payload.manual_text_hint or "如果这些猜测都不对，可以直接输入你的真实想法。",
         )
 
     def refine_prompt(
@@ -368,7 +371,7 @@ class LangChainLLMEnhancer:
             manual_text_hint=payload.manual_text_hint or "也可以直接输入你想要的改写。",
         )
 
-    def _fallback_slot_choice_payload(
+    def _fallback_hypothesis_choice_payload(
         self,
         template: TemplateSpec,
         state: SessionState,
@@ -379,7 +382,7 @@ class LangChainLLMEnhancer:
         recent_user_text: str,
     ) -> SlotChoicePayload | None:
         try:
-            raw_text = self._slot_choice_text_chain.invoke(
+            raw_text = self._hypothesis_choice_text_chain.invoke(
                 {
                     "mode_key": template.mode_key,
                     "slot_key": slot_key,
@@ -391,12 +394,12 @@ class LangChainLLMEnhancer:
                 }
             )
         except Exception:  # noqa: BLE001
-            self._debug("slot-choice fallback generation failed", exc_info=True)
+            self._debug("hypothesis-choice fallback generation failed", exc_info=True)
             return None
 
         payload = parse_slot_choice_payload(raw_text, strict_json_only=False, default_slot=slot_key)
         if payload is None:
-            self._debug(f"slot-choice fallback raw response rejected: {raw_text}")
+            self._debug(f"hypothesis-choice fallback raw response rejected: {raw_text}")
         return payload
 
     def _debug(self, message: str, exc_info: bool = False) -> None:

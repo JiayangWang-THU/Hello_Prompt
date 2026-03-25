@@ -20,7 +20,7 @@ def test_choice_first_flow_prefers_mode_selection_and_number_input():
 
     second = service.handle_user_message("1")
     assert service.state.mode_key() == "CODE/EXTEND"
-    assert "请补全" in second.text
+    assert "更接近下面这些想法之一" in second.text
 
     third = service.handle_user_message("1")
     assert service.state.confirmed_slots["base_system"] == "现有 Python CLI"

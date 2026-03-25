@@ -26,7 +26,7 @@ class TemplateCatalog:
         }
 
     def mode_menu_text(self) -> str:
-        lines = ["请选择模式（Prompt Clarification Framework）："]
+        lines = ["请选择模式（需求收敛系统）："]
         for idx, template in enumerate(self.templates.values(), 1):
             label = template.label or template.description or ""
             lines.append(f"{idx}) /mode {template.category} {template.subtype}  （{label}）")
@@ -38,4 +38,3 @@ class TemplateCatalog:
         if spec is None:
             return f"请补充：{slot}"
         return spec.question
-

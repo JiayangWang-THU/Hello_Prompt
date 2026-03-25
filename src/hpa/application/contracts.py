@@ -7,6 +7,7 @@ from hpa.domain import (
     PromptSpec,
     SharedPromptDocument,
     SessionState,
+    Suggestion,
     TemplateCatalog,
     TemplateSpec,
     ValidationIssue,
@@ -28,7 +29,7 @@ class LLMEnhancer(Protocol):
     ) -> dict[str, str]:
         ...
 
-    def propose_slot_choice(
+    def propose_hypothesis_choice(
         self,
         catalog: TemplateCatalog,
         template: TemplateSpec,

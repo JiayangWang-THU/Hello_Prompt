@@ -10,7 +10,7 @@ def test_show_no_longer_depends_on_old_assisted_engine():
     service = build_service(llm=FakeLLMEnhancer(mode_choice=make_mode_choice("CODE/EXTEND")))
     service.handle_user_message("我要改一个 CLI")
     result = service.show_state()
-    assert "当前等待中的选择题" in result.text
+    assert "当前等待中的收敛建议" in result.text
 
 
 def test_cli_dispatch_handles_doc_command():

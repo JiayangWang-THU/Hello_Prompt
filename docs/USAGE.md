@@ -1,15 +1,36 @@
 # Usage
 
-## CLI Quickstart
+## Quick Start
 
-1. `hpa agent`
-2. 直接描述你的任务
-3. 根据系统给出的数字选项完成 mode 和关键槽位选择
-4. 必要时补一小段自由文本
-5. 用 `/doc`、`/draft`、`/lint`、`/repair` 调整共享 prompt 文档
-6. 用 `/export` 保存当前会话 JSON
+### Clarification Workflow
 
-## Commands
+```bash
+hpa agent
+```
+
+典型流程：
+
+1. 输入一句任务描述
+2. 系统先猜测最接近的 mode
+3. 系统给出 top-k 收敛建议
+4. 你可以直接选择，也可以修正它的猜测
+5. 用 `/draft` 查看当前共享文档
+6. 用 `/lint`、`/repair`、`/revise` 继续调整
+7. 用 `/export` 导出会话
+
+### Raw Chat
+
+```bash
+hpa chat --base-url http://127.0.0.1:8080 --model <model>
+```
+
+### Local Web UI
+
+```bash
+hpa web --host 127.0.0.1 --port 7860
+```
+
+## Agent Commands
 
 - `/help`
 - `/templates`
@@ -25,11 +46,17 @@
 - `/reset`
 - `/paste`
 
-## Interaction Style
+## Interaction Rules
 
-`hpa agent` 现在默认就是 LLM 驱动：
+- 优先使用数字选择推进流程
+- mode 未确定前，系统会先给 mode 候选
+- 系统会主动猜测你可能真正想要的方向，而不是等你自己先讲清楚
+- 每一轮只推进一个最值得确认的点
+- 如果系统猜错了，直接输入文字修正即可
+- `/doc` 查看的是共享文档视图，不只是原始 facts
 
-- 优先给 mode 选择题
-- 优先给关键槽位候选答案
-- 用户输入数字即可推进
-- 只有候选答案都不合适时，才补一小段自由文本
+## Current Modes
+
+- `CODE/FROM_SCRATCH`
+- `CODE/REVIEW`
+- `CODE/EXTEND`

@@ -51,12 +51,14 @@ class ChoiceOption(BaseModel):
 
 
 class ChoicePrompt(BaseModel):
-    kind: Literal["mode_select", "slot_select", "doc_revision"]
+    kind: Literal["mode_select", "hypothesis_select", "doc_revision"]
     title: str
     question: str
     options: list[ChoiceOption] = Field(default_factory=list)
     slot: str | None = None
     section_key: str | None = None
+    focus_label: str | None = None
+    planning_note: str = ""
     allow_manual_text: bool = True
     manual_text_hint: str = ""
     source_user_text: str | None = None
@@ -69,7 +71,7 @@ class ClarificationQuestion(BaseModel):
 
 
 class Suggestion(BaseModel):
-    kind: Literal["mode", "question", "repair", "capability", "note"] = "note"
+    kind: Literal["mode", "question", "hypothesis", "repair", "capability", "note"] = "note"
     message: str
     source: Literal["rule", "llm", "system", "capability"] = "system"
     slot: str | None = None
@@ -147,6 +149,7 @@ class SessionState:
     draft_text: str | None = None
     latest_document: SharedPromptDocument | None = None
     seed_intent: str | None = None
+    current_focus: str | None = None
 
     @property
     def slots(self) -> dict[str, str]:

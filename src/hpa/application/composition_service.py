@@ -39,9 +39,9 @@ class PromptCompositionService:
 
     def build_prompt_spec(self, state: SessionState, template: TemplateSpec) -> PromptSpec:
         role_lines = [
-            "You are a senior software engineer and prompt engineer.",
+            "You are a senior software engineer helping turn a converged user demand into an executable prompt.",
             f"Mode: {template.mode_key}",
-            "Preserve confirmed facts. Treat suggestions as optional unless the user confirms them.",
+            "Preserve confirmed facts. Treat hypotheses and suggestions as optional unless the user confirms them.",
         ]
         grouped: dict[str, list[str]] = {
             "context": [],

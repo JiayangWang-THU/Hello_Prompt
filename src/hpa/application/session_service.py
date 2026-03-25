@@ -14,12 +14,14 @@ class SessionService:
     def show_state(self, state: SessionState, template: TemplateSpec | None) -> str:
         lines: list[str] = []
         lines.append(f"当前 mode: {state.mode_key() or '(未选择)'}")
+        if state.current_focus:
+            lines.append(f"当前收敛焦点: {state.current_focus}")
         if template is None:
             if state.pending_choice is not None:
-                lines.append("当前等待中的选择题：")
+                lines.append("当前等待中的收敛建议：")
                 lines.extend(self._render_choice_lines(state))
             else:
-                lines.append("请先描述你的任务，系统会先给出推荐 mode 选择。")
+                lines.append("请先描述你的任务，系统会先猜测最接近的 mode 和下一步方向。")
             return "\n".join(lines)
 
         missing = [slot for slot in template.required_slots if not state.confirmed_slots.get(slot, "").strip()]
@@ -40,7 +42,7 @@ class SessionService:
         else:
             lines.append("- (none)")
         if state.pending_choice is not None:
-            lines.append("当前等待中的选择题:")
+            lines.append("当前等待中的收敛建议:")
             lines.extend(self._render_choice_lines(state))
         return "\n".join(lines)
 
@@ -75,6 +77,8 @@ class SessionService:
         if state.pending_choice is None:
             return ["- (none)"]
         lines = [f"- {state.pending_choice.title}", f"  {state.pending_choice.question}"]
+        if state.pending_choice.planning_note:
+            lines.append(f"  推进策略：{state.pending_choice.planning_note}")
         for idx, option in enumerate(state.pending_choice.options, 1):
             suffix = f"  ({option.rationale})" if option.rationale else ""
             lines.append(f"  {idx}. {option.label}{suffix}")
